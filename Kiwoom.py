@@ -2,7 +2,6 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
-# import pythoncom
 
 
 class Kiwoom:
@@ -86,8 +85,6 @@ class Kiwoom:
         self.ocx.dynamicCall(
             "CommRqData(QString, QString, int, QString)", rqname, trcode, next, screen)
 
-    # 종목명
-    # 종목코드(code) 받고 종목명으로 바꾸기
     def get_mastercode_name(self, code):
         '''
             Change code to name    ex) '005930' -> 'Samsung'
@@ -95,9 +92,6 @@ class Kiwoom:
         name = self.ocx.dynamicCall("GetMasterCodeName(QString)", code)
         return name
 
-    # 종목코드: market_code
-    # '0' -> 코스피 | '3' -> ELW | '4' -> 뮤츄얼펀드
-    # '8' -> ETF   | '10'-> 코스닥
     def get_codelist_by_market(self, market_code):
         '''
             Market Code

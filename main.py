@@ -11,14 +11,12 @@ class MyWindow(QMainWindow):
 
         self.kiwoom = Kiwoom()
 
-        # tr request
         self.kiwoom.setInputValue("종목코드", "005930")
 
         market_code = self.kiwoom.get_codelist_by_market('0')
         for i, code in enumerate(market_code[:10]):
             print(i+1, self.kiwoom.get_mastercode_name(code))
 
-        # 사용자명 받기
         username = self.kiwoom.get_username()
         print(username)
 
