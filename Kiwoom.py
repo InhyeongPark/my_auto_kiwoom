@@ -11,15 +11,22 @@ class Kiwoom:
         # Event Loop
         self.ocx = None
         self.login_eventLoop = QEventLoop()
+        self.account_eventLoop = QEventLoop()
 
         # variables
         self.account_num = None
         self.username = None
+        self.deposit = None                     # 예수금
+        self.withdraw_amount = None             # 출금가능금액
+        self.order_amount = None                # 주문가능금액
+
+        self.screen_num = '1000'
 
         # Before running
         self.create_instance()
         self.start_event()
         self.start_login()
+        self.get_deposit_info()                 # 예수금 정보
 
         # Setting
         self.account_num = self.get_account_num()
@@ -61,7 +68,27 @@ class Kiwoom:
     def onReceiveTrData(self, sScrNo, sRQName, sTrCode, sRecordName, sPrevNext):
         '''
             Notify when the server is ready for a transition request
+            1. SetInputValue   -> set input before asking transition
+            2. CommRqData      -> when ready to ask for transition, send request to the server
+            3. OnReceiveTrData -> notifying client that server's ready
+            4. GetCommData     -> client receiving data from the server
         '''
+        if sRQName == '예수금상세현황요청':
+            my_deposit = self.dynamicCall(
+                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "예수금")
+            self.deposit = int(my_deposit)
+
+            my_withdraw = self.dynamicCall(
+                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "출금가능금액")
+            self.withdraw_amount = int(my_withdraw)
+
+            my_order = self.dynamicCall(
+                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "주문가능금액")
+            self.order_amount = int(my_order)
+
+            self.cancel_realData(self.screen_num)
+            self.account_eventLoop.exit()
+
         print(sScrNo, sRQName, sTrCode, sRecordName, sPrevNext)
 
     def getCommData(self, trcode, rqname, index, item):
@@ -110,3 +137,17 @@ class Kiwoom:
     def get_username(self):
         username = self.ocx.dynamicCall("GetLoginInfo(QString)", "USER_NAME")
         return username
+
+    def cancel_realData(self, sScrNo):
+        self.dynamicCall("DisconnectRealData(QString)", sScrNo)
+
+    def get_deposit_info(self, nPrevNext=0):
+        self.dynamicCall("SetInputValue(QString, QString)",
+                         "계좌번호", self.account_num)
+        self.dynamicCall("SetInputValue(QString, QString)", "비밀번호", " ")
+        self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
+        self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
+        self.dynamicCall("CommRqData(QString, QString, int, QString)",
+                         "예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
+
+        self.account_event_loop.exec_()
