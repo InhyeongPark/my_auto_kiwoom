@@ -26,11 +26,11 @@ class Kiwoom:
         self.create_instance()
         self.start_event()
         self.start_login()
+        self.get_account_num()
+        self.get_username()
         self.get_deposit_info()                 # 예수금 정보
 
         # Setting
-        self.account_num = self.get_account_num()
-        self.username = self.get_username()
 
     def create_instance(self):
         ''' 
@@ -74,15 +74,15 @@ class Kiwoom:
             4. GetCommData     -> client receiving data from the server
         '''
         if sRQName == '예수금상세현황요청':
-            my_deposit = self.dynamicCall(
+            my_deposit = self.ocx.dynamicCall(
                 "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "예수금")
             self.deposit = int(my_deposit)
 
-            my_withdraw = self.dynamicCall(
+            my_withdraw = self.ocx.dynamicCall(
                 "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "출금가능금액")
             self.withdraw_amount = int(my_withdraw)
 
-            my_order = self.dynamicCall(
+            my_order = self.ocx.dynamicCall(
                 "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "주문가능금액")
             self.order_amount = int(my_order)
 
@@ -109,8 +109,8 @@ class Kiwoom:
         '''
             Use when ready to send the request to the server
         '''
-        self.ocx.dynamicCall(
-            "CommRqData(QString, QString, int, QString)", rqname, trcode, next, screen)
+        self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
+                             rqname, trcode, next, screen)
 
     def get_mastercode_name(self, code):
         '''
@@ -121,33 +121,34 @@ class Kiwoom:
 
     def get_codelist_by_market(self, market_code):
         '''
-            Market Code
-            {'0': KOSPI, '3': 'ELW', '4': 'Mutual Fund,
-             '8': ETF, '10': KOSDAQ}
+            Market Code {'0': KOSPI, '3': 'ELW', '4': 'Mutual Fund, '8': ETF, '10': KOSDAQ}
         '''
-        code_list = self.ocx.dynamicCall(
-            "GetCodeListByMarket(QString)", market_code)
+        code_list = self.ocx.dynamicCall("GetCodeListByMarket(QString)",
+                                         market_code)
         code_list = code_list.split(";")[:-1]
         return code_list
 
     def get_account_num(self):
-        acc_list = self.ocx.dynamicCall("GetLoginInfo(QString)", "ACCNO")
-        return acc_list.split(';')[0]
+        accounts = self.ocx.dynamicCall("GetLoginInfo(QString)", "ACCNO")
+        self.account_num = accounts.split(';')[0]
 
     def get_username(self):
         username = self.ocx.dynamicCall("GetLoginInfo(QString)", "USER_NAME")
-        return username
+        self.username = username
 
     def cancel_realData(self, sScrNo):
-        self.dynamicCall("DisconnectRealData(QString)", sScrNo)
+        self.ocx.dynamicCall("DisconnectRealData(QString)", sScrNo)
 
     def get_deposit_info(self, nPrevNext=0):
-        self.dynamicCall("SetInputValue(QString, QString)",
-                         "계좌번호", self.account_num)
-        self.dynamicCall("SetInputValue(QString, QString)", "비밀번호", " ")
-        self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
-        self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
-        self.dynamicCall("CommRqData(QString, QString, int, QString)",
-                         "예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "계좌번호", self.account_num)
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "비밀번호", " ")
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "비밀번호입력매체구분", "00")
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "조회구분", "2")
+        self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
+                             "예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
 
-        self.account_event_loop.exec_()
+        self.account_eventLoop.exec_()
