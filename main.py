@@ -11,6 +11,7 @@ class MyWindow(QMainWindow):
 
         self.kiwoom = Kiwoom()
 
+        # 005930: Samsung
         self.kiwoom.setInputValue("종목코드", "005930")
 
         market_code = self.kiwoom.get_codelist_by_market('0')

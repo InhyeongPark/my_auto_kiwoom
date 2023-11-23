@@ -89,7 +89,7 @@ class Kiwoom:
             self.cancel_realData(self.screen_num)
             self.account_eventLoop.exit()
 
-        print(sScrNo, sRQName, sTrCode, sRecordName, sPrevNext)
+        print('1: ', sScrNo, sRQName, sTrCode, sRecordName, sPrevNext)
 
     def getCommData(self, trcode, rqname, index, item):
         '''
@@ -140,6 +140,9 @@ class Kiwoom:
         self.ocx.dynamicCall("DisconnectRealData(QString)", sScrNo)
 
     def get_deposit_info(self, nPrevNext=0):
+        '''
+            Deposit: deposit, withdraw amount, order available amount
+        '''
         self.ocx.dynamicCall("SetInputValue(QString, QString)",
                              "계좌번호", self.account_num)
         self.ocx.dynamicCall("SetInputValue(QString, QString)",
@@ -152,3 +155,19 @@ class Kiwoom:
                              "예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
 
         self.account_eventLoop.exec_()
+
+    def get_account_eval_balance(self, nPrevNext=0):
+        '''
+            Account Evaluation: total purchase amount, total eval amount, total yield, ...
+        '''
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "계좌번호", self.account_num)
+        self.ocx.dynamicCall("SetInputValue(QString, QString)", "비밀번호", " ")
+        self.ocx.dynamicCall("SetInputValue(QString, QString)",
+                             "비밀번호입력매체구분", "00")
+        self.ocx.dynamicCall("SetInputValue(QString, QString)", "조회구분", "1")
+        self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
+                             "계좌평가잔고내역요청", "opw00018", nPrevNext, self.screen_num)
+
+        if not self.account_eventLoop.isRunning():
+            self.account_eventLoop.exec_()
