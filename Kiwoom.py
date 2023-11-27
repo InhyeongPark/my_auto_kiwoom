@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
+from collections import defaultdict
 
 
 class Kiwoom:
@@ -19,6 +20,11 @@ class Kiwoom:
         self.deposit = None                     # 예수금
         self.withdraw_amount = None             # 출금가능금액
         self.order_amount = None                # 주문가능금액
+        self.total_buy_amount = None            # 총 매입금액
+        self.total_eval_amount = None           # 총 평가금액
+        self.total_profit = None                # 총 평가손익금액
+        self.total_yield = None                 # 총 수익률 (%)
+        self.stock_account = defaultdict()
 
         self.screen_num = '1000'
 
@@ -73,30 +79,96 @@ class Kiwoom:
             3. OnReceiveTrData -> notifying client that server's ready
             4. GetCommData     -> client receiving data from the server
         '''
+        print('1: ', sScrNo, sRQName, sTrCode, sRecordName, sPrevNext)
+
         if sRQName == '예수금상세현황요청':
-            my_deposit = self.ocx.dynamicCall(
-                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "예수금")
+            my_deposit = self.getCommData(sTrCode, sRQName, 0, "예수금")
             self.deposit = int(my_deposit)
 
-            my_withdraw = self.ocx.dynamicCall(
-                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "출금가능금액")
+            my_withdraw = self.getCommData(sTrCode, sRQName, 0, "출금가능금액")
             self.withdraw_amount = int(my_withdraw)
 
-            my_order = self.ocx.dynamicCall(
-                "GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "주문가능금액")
+            my_order = self.getCommData(sTrCode, sRQName, 0, "주문가능금액")
             self.order_amount = int(my_order)
 
             self.cancel_realData(self.screen_num)
             self.account_eventLoop.exit()
 
-        print('1: ', sScrNo, sRQName, sTrCode, sRecordName, sPrevNext)
+        elif sRQName == '계좌평가잔고내역요청':
+            setting_complete = (self.total_buy_amount or self.total_eval_amount
+                                or self.total_profit or self.total_yield)
+            if not setting_complete:
+                total_buy_amount = self.getCommData(
+                    sTrCode, sRQName, 0, "총매입금액")
+                self.total_buy_amount = int(total_buy_amount)
+
+                total_eval_amount = self.getCommData(
+                    sTrCode, sRQName, 0, "총평가금액")
+                self.total_eval_amount = int(total_eval_amount)
+
+                total_profit = self.getCommData(sTrCode, sRQName, 0, "총평가손익금액")
+                self.total_profit = int(total_profit)
+
+                total_yield = self.getCommData(sTrCode, sRQName, 0, "총수익률(%)")
+                self.total_yield = float(total_yield)
+
+            count = self.getRepeatCnt(sTrCode, sRQName)
+
+            for i in range(count):
+                stock_code = self.getCommData(sTrCode, sRQName, i, "종목번호")
+                stock_code = stock_code[1:]
+
+                stock_name = self.getCommData(sTrCode, sRQName, i, "종목명")
+
+                stock_eval_profit = self.getCommData(
+                    sTrCode, sRQName, i, "평가손익")
+                stock_eval_profit = int(stock_eval_profit)
+
+                stock_yield = self.getCommData(sTrCode, sRQName, i, "수익률(%)")
+                stock_yield = float(stock_yield)
+
+                stock_purchase_price = self.getCommData(
+                    sTrCode, sRQName, i, "매입가")
+                stock_purchase_price = int(stock_purchase_price)
+
+                stock_quantity = self.getCommData(sTrCode, sRQName, i, "보유수량")
+                stock_quantity = int(stock_quantity)
+
+                stock_trade_avail_quantity = self.getCommData(
+                    sTrCode, sRQName, i, "매매가능수량")
+                stock_trade_avail_quantity = int(stock_trade_avail_quantity)
+
+                stock_present_price = self.getCommData(
+                    sTrCode, sRQName, i, "현재가")
+                stock_present_price = int(stock_present_price)
+
+                self.stock_account[stock_code].update(
+                    {'종목명': stock_name})
+                self.stock_account[stock_code].update(
+                    {'평가손익': stock_eval_profit})
+                self.stock_account[stock_code].update(
+                    {'수익률(%)': stock_yield})
+                self.stock_account[stock_code].update(
+                    {'매입가': stock_purchase_price})
+                self.stock_account[stock_code].update(
+                    {'보유수량': stock_quantity})
+                self.stock_account[stock_code].update(
+                    {'매매가능수량': stock_trade_avail_quantity})
+                self.stock_account[stock_code].update(
+                    {'현재가': stock_present_price})
+
+            if sPrevNext == '2':
+                self.get_account_eval_balance(2)
+            else:
+                self.cancel_realData(self.screen_num)
+                self.account_eventLoop.exit()
 
     def getCommData(self, trcode, rqname, index, item):
         '''
             Get received data from the server
         '''
-        data = self.ocx.dynamicCall(
-            "GetCommData(QString, QString, int, QString)", trcode, rqname, index, item)
+        data = self.ocx.dynamicCall("GetCommData(QString, QString, int, QString)",
+                                    trcode, rqname, index, item)
         return data.strip()
 
     def setInputValue(self, id, value):
@@ -123,8 +195,8 @@ class Kiwoom:
         '''
             Market Code {'0': KOSPI, '3': 'ELW', '4': 'Mutual Fund, '8': ETF, '10': KOSDAQ}
         '''
-        code_list = self.ocx.dynamicCall("GetCodeListByMarket(QString)",
-                                         market_code)
+        code_list = self.ocx.dynamicCall(
+            "GetCodeListByMarket(QString)", market_code)
         code_list = code_list.split(";")[:-1]
         return code_list
 
@@ -136,6 +208,9 @@ class Kiwoom:
         username = self.ocx.dynamicCall("GetLoginInfo(QString)", "USER_NAME")
         self.username = username
 
+    def getRepeatCnt(self, sTrCode, sRQName):
+        return self.ocx.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+
     def cancel_realData(self, sScrNo):
         self.ocx.dynamicCall("DisconnectRealData(QString)", sScrNo)
 
@@ -143,16 +218,11 @@ class Kiwoom:
         '''
             Deposit: deposit, withdraw amount, order available amount
         '''
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "계좌번호", self.account_num)
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "비밀번호", " ")
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "비밀번호입력매체구분", "00")
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "조회구분", "2")
-        self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
-                             "예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
+        self.setInputValue("계좌번호", self.account_num)
+        self.setInputValue("비밀번호", " ")
+        self.setInputValue("비밀번호입력매체구분", "00")
+        self.setInputValue("조회구분", "2")
+        self.setInputValue("예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
 
         self.account_eventLoop.exec_()
 
@@ -160,14 +230,12 @@ class Kiwoom:
         '''
             Account Evaluation: total purchase amount, total eval amount, total yield, ...
         '''
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "계좌번호", self.account_num)
-        self.ocx.dynamicCall("SetInputValue(QString, QString)", "비밀번호", " ")
-        self.ocx.dynamicCall("SetInputValue(QString, QString)",
-                             "비밀번호입력매체구분", "00")
-        self.ocx.dynamicCall("SetInputValue(QString, QString)", "조회구분", "1")
-        self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
-                             "계좌평가잔고내역요청", "opw00018", nPrevNext, self.screen_num)
+        self.setInputValue("계좌번호", self.account_num)
+        self.setInputValue("비밀번호", " ")
+        self.setInputValue("비밀번호입력매체구분", "00")
+        self.setInputValue("조회구분", "1")
+        self.setInputValue("계좌평가잔고내역요청", "opw00018",
+                           nPrevNext, self.screen_num)
 
         if not self.account_eventLoop.isRunning():
             self.account_eventLoop.exec_()
