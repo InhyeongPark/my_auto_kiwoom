@@ -17,14 +17,15 @@ class Kiwoom:
         # variables
         self.account_num = None
         self.username = None
-        self.deposit = None                     # 예수금
-        self.withdraw_amount = None             # 출금가능금액
-        self.order_amount = None                # 주문가능금액
-        self.total_buy_amount = None            # 총 매입금액
-        self.total_eval_amount = None           # 총 평가금액
-        self.total_profit = None                # 총 평가손익금액
-        self.total_yield = None                 # 총 수익률 (%)
-        self.stock_account = defaultdict()
+        self.deposit = None                       # 예수금
+        self.withdraw_amount = None               # 출금가능금액
+        self.order_amount = None                  # 주문가능금액
+        self.tBuyAmount = None                    # 총 매입금액: total buy amount
+        self.tEvalAmount = None                   # 총 평가금액: total evaluation amount
+        self.tProfit = None                       # 총 평가손익금액: total profit
+        self.tYield = None                        # 총 수익률 (%): total yield
+        self.stock_account = defaultdict()        # 체결된 계좌: trade-completed
+        self.not_ordered_account = defaultdict()  # 체결 안 된 계좌: open-orders
 
         self.screen_num = '1000'
 
@@ -95,72 +96,111 @@ class Kiwoom:
             self.account_eventLoop.exit()
 
         elif sRQName == '계좌평가잔고내역요청':
-            setting_complete = (self.total_buy_amount or self.total_eval_amount
-                                or self.total_profit or self.total_yield)
+            setting_complete = (self.tBuyAmount or self.tEvalAmount
+                                or self.tProfit or self.tYield)
+
             if not setting_complete:
-                total_buy_amount = self.getCommData(
-                    sTrCode, sRQName, 0, "총매입금액")
-                self.total_buy_amount = int(total_buy_amount)
+                tBuyAmount = self.getCommData(sTrCode, sRQName, 0, "총매입금액")
+                self.tBuyAmount = int(tBuyAmount)
 
-                total_eval_amount = self.getCommData(
-                    sTrCode, sRQName, 0, "총평가금액")
-                self.total_eval_amount = int(total_eval_amount)
+                tEvalAmount = self.getCommData(sTrCode, sRQName, 0, "총평가금액")
+                self.tEvalAmount = int(tEvalAmount)
 
-                total_profit = self.getCommData(sTrCode, sRQName, 0, "총평가손익금액")
-                self.total_profit = int(total_profit)
+                tProfit = self.getCommData(sTrCode, sRQName, 0, "총평가손익금액")
+                self.tProfit = int(tProfit)
 
-                total_yield = self.getCommData(sTrCode, sRQName, 0, "총수익률(%)")
-                self.total_yield = float(total_yield)
+                tYield = self.getCommData(sTrCode, sRQName, 0, "총수익률(%)")
+                self.tYield = float(tYield)
 
             count = self.getRepeatCnt(sTrCode, sRQName)
 
             for i in range(count):
-                stock_code = self.getCommData(sTrCode, sRQName, i, "종목번호")
-                stock_code = stock_code[1:]
+                sCode = self.getCommData(sTrCode, sRQName, i, "종목번호")
+                sCode = sCode[1:]
 
-                stock_name = self.getCommData(sTrCode, sRQName, i, "종목명")
+                sName = self.getCommData(sTrCode, sRQName, i, "종목명")
 
-                stock_eval_profit = self.getCommData(
-                    sTrCode, sRQName, i, "평가손익")
-                stock_eval_profit = int(stock_eval_profit)
+                sEvalProfit = self.getCommData(sTrCode, sRQName, i, "평가손익")
+                sEvalProfit = int(sEvalProfit)
 
-                stock_yield = self.getCommData(sTrCode, sRQName, i, "수익률(%)")
-                stock_yield = float(stock_yield)
+                sYield = self.getCommData(sTrCode, sRQName, i, "수익률(%)")
+                sYield = float(sYield)
 
-                stock_purchase_price = self.getCommData(
-                    sTrCode, sRQName, i, "매입가")
-                stock_purchase_price = int(stock_purchase_price)
+                sBuyPrice = self.getCommData(sTrCode, sRQName, i, "매입가")
+                sBuyPrice = int(sBuyPrice)
 
-                stock_quantity = self.getCommData(sTrCode, sRQName, i, "보유수량")
-                stock_quantity = int(stock_quantity)
+                sQuantity = self.getCommData(sTrCode, sRQName, i, "보유수량")
+                sQuantity = int(sQuantity)
 
-                stock_trade_avail_quantity = self.getCommData(
+                tAvailQuantity = self.getCommData(
                     sTrCode, sRQName, i, "매매가능수량")
-                stock_trade_avail_quantity = int(stock_trade_avail_quantity)
+                tAvailQuantity = int(tAvailQuantity)
 
-                stock_present_price = self.getCommData(
-                    sTrCode, sRQName, i, "현재가")
-                stock_present_price = int(stock_present_price)
+                sCurrPrice = self.getCommData(sTrCode, sRQName, i, "현재가")
+                sCurrPrice = int(sCurrPrice)
 
-                self.stock_account[stock_code].update(
-                    {'종목명': stock_name})
-                self.stock_account[stock_code].update(
-                    {'평가손익': stock_eval_profit})
-                self.stock_account[stock_code].update(
-                    {'수익률(%)': stock_yield})
-                self.stock_account[stock_code].update(
-                    {'매입가': stock_purchase_price})
-                self.stock_account[stock_code].update(
-                    {'보유수량': stock_quantity})
-                self.stock_account[stock_code].update(
-                    {'매매가능수량': stock_trade_avail_quantity})
-                self.stock_account[stock_code].update(
-                    {'현재가': stock_present_price})
+                self.stock_account[sCode].update({'종목명': sName})
+                self.stock_account[sCode].update({'평가손익': sEvalProfit})
+                self.stock_account[sCode].update({'수익률(%)': sYield})
+                self.stock_account[sCode].update({'매입가': sBuyPrice})
+                self.stock_account[sCode].update({'보유수량': sQuantity})
+                self.stock_account[sCode].update({'매매가능수량': tAvailQuantity})
+                self.stock_account[sCode].update({'현재가': sCurrPrice})
 
             if sPrevNext == '2':
                 self.get_account_eval_balance(2)
             else:
                 self.cancel_realData(self.screen_num)
+                self.account_eventLoop.exit()
+
+        elif sRQName == '실시간미체결요청':
+            count = self.getRepeatCnt(sTrCode, sRQName)
+
+            for i in range(count):
+                sCode = self.getCommData(sTrCode, sRQName, i, "종목코드")
+
+                sOrdNum = self.getCommData(sTrCode, sRQName, i, "주문번호")
+                sOrdNum = int(sOrdNum)
+
+                sName = self.getCommData(sTrCode, sRQName, i, "종목명")
+
+                sOrdType = self.getCommData(sTrCode, sRQName, i, "주문구분")
+                sOrdType = sOrdType.lstrip('+').lstrip('-')
+
+                sOrdPrice = self.getCommData(sTrCode, sRQName, i, "주문가격")
+                sOrdPrice = int(sOrdPrice)
+
+                sCurrPrice = self.getCommData(sTrCode, sRQName, i, "현재가")
+                sCurrPrice = int(sCurrPrice.lstrip('+').lstrip('-'))
+
+                sOrdStat = self.getCommData(sTrCode, sRQName, i, "주문상태")
+
+                sOrdQuantity = self.getCommData(sTrCode, sRQName, i, "주문수량")
+                sOrdQuantity = int(sOrdQuantity)
+
+                notOrdQuantity = self.getCommData(sTrCode, sRQName, i, "미체결수량")
+                notOrdQuantity = int(notOrdQuantity)
+
+                orderedQuantity = self.getCommData(sTrCode, sRQName, i, "체결량")
+                orderedQuantity = int(orderedQuantity)
+
+                self.not_ordered_account[sOrdNum].update({'종목코드': sCode})
+                self.not_ordered_account[sOrdNum].update({'종목명': sName})
+                self.not_ordered_account[sOrdNum].update({'주문구분': sOrdType})
+                self.not_ordered_account[sOrdNum].update({'주문가격': sOrdPrice})
+                self.not_ordered_account[sOrdNum].update({'현재가': sCurrPrice})
+                self.not_ordered_account[sOrdNum].update({'주문상태': sOrdStat})
+                self.not_ordered_account[sOrdNum].update(
+                    {'주문수량': sOrdQuantity})
+                self.not_ordered_account[sOrdNum].update(
+                    {'미체결수량': notOrdQuantity})
+                self.not_ordered_account[sOrdNum].update(
+                    {'체결량': orderedQuantity})
+
+            if sPrevNext == '2':
+                self.get_account_eval_balance(2)
+            else:
+                self.cancel_realData(sScrNo)
                 self.account_eventLoop.exit()
 
     def getCommData(self, trcode, rqname, index, item):
@@ -222,7 +262,7 @@ class Kiwoom:
         self.setInputValue("비밀번호", " ")
         self.setInputValue("비밀번호입력매체구분", "00")
         self.setInputValue("조회구분", "2")
-        self.setInputValue("예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
+        self.CommRqData("예수금상세현황요청", "opw00001", nPrevNext, self.screen_num)
 
         self.account_eventLoop.exec_()
 
@@ -234,8 +274,20 @@ class Kiwoom:
         self.setInputValue("비밀번호", " ")
         self.setInputValue("비밀번호입력매체구분", "00")
         self.setInputValue("조회구분", "1")
-        self.setInputValue("계좌평가잔고내역요청", "opw00018",
-                           nPrevNext, self.screen_num)
+        self.CommRqData("계좌평가잔고내역요청", "opw00018", nPrevNext, self.screen_num)
+
+        if not self.account_eventLoop.isRunning():
+            self.account_eventLoop.exec_()
+
+    def not_signed_account(self, nPrevNext=0):
+        '''
+            Get Open Orders
+        '''
+        self.setInputValue("계좌번호", self.account_num)
+        self.setInputValue("전체종목구분", "0")
+        self.setInputValue("매매구분", "0")
+        self.setInputValue("체결구분", "1")
+        self.CommRqData("실시간미체결요청", "opt10075", nPrevNext, self.screen_num)
 
         if not self.account_eventLoop.isRunning():
             self.account_eventLoop.exec_()
