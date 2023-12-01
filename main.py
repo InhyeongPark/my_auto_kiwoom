@@ -14,11 +14,11 @@ class MyWindow(QMainWindow):
         # 005930: Samsung
         self.kiwoom.setInputValue("종목코드", "005930")
 
-        market_code = self.kiwoom.get_codelist_by_market('0')
+        market_code = self.kiwoom.getCodeListByMarket('0')
         for i, code in enumerate(market_code[:10]):
-            print(i+1, self.kiwoom.get_mastercode_name(code))
+            print(i+1, self.kiwoom.getMasterCodeName(code))
 
-        username = self.kiwoom.get_username()
+        username = self.kiwoom.getUserName()
         print(username)
 
 

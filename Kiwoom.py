@@ -33,9 +33,9 @@ class Kiwoom:
         self.create_instance()
         self.start_event()
         self.start_login()
-        self.get_account_num()
-        self.get_username()
-        self.get_deposit_info()                 # 예수금 정보
+        self.getAccNum()
+        self.getUserName()
+        self.getDepositInfo()                 # 예수금 정보
 
         # Setting
 
@@ -92,7 +92,7 @@ class Kiwoom:
             my_order = self.getCommData(sTrCode, sRQName, 0, "주문가능금액")
             self.order_amount = int(my_order)
 
-            self.cancel_realData(self.screen_num)
+            self.cancelRealData(self.screen_num)
             self.account_eventLoop.exit()
 
         elif sRQName == '계좌평가잔고내역요청':
@@ -148,9 +148,9 @@ class Kiwoom:
                 self.stock_account[sCode].update({'현재가': sCurrPrice})
 
             if sPrevNext == '2':
-                self.get_account_eval_balance(2)
+                self.getAccEvalBalance(2)
             else:
-                self.cancel_realData(self.screen_num)
+                self.cancelRealData(self.screen_num)
                 self.account_eventLoop.exit()
 
         elif sRQName == '실시간미체결요청':
@@ -198,9 +198,9 @@ class Kiwoom:
                     {'체결량': orderedQuantity})
 
             if sPrevNext == '2':
-                self.get_account_eval_balance(2)
+                self.getAccEvalBalance(2)
             else:
-                self.cancel_realData(sScrNo)
+                self.cancelRealData(sScrNo)
                 self.account_eventLoop.exit()
 
     def getCommData(self, trcode, rqname, index, item):
@@ -224,14 +224,14 @@ class Kiwoom:
         self.ocx.dynamicCall("CommRqData(QString, QString, int, QString)",
                              rqname, trcode, next, screen)
 
-    def get_mastercode_name(self, code):
+    def getMasterCodeName(self, code):
         '''
             Change code to name    ex) '005930' -> 'Samsung'
         '''
         name = self.ocx.dynamicCall("GetMasterCodeName(QString)", code)
         return name
 
-    def get_codelist_by_market(self, market_code):
+    def getCodeListByMarket(self, market_code):
         '''
             Market Code {'0': KOSPI, '3': 'ELW', '4': 'Mutual Fund, '8': ETF, '10': KOSDAQ}
         '''
@@ -240,21 +240,21 @@ class Kiwoom:
         code_list = code_list.split(";")[:-1]
         return code_list
 
-    def get_account_num(self):
+    def getAccNum(self):
         accounts = self.ocx.dynamicCall("GetLoginInfo(QString)", "ACCNO")
         self.account_num = accounts.split(';')[0]
 
-    def get_username(self):
+    def getUserName(self):
         username = self.ocx.dynamicCall("GetLoginInfo(QString)", "USER_NAME")
         self.username = username
 
     def getRepeatCnt(self, sTrCode, sRQName):
         return self.ocx.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
 
-    def cancel_realData(self, sScrNo):
+    def cancelRealData(self, sScrNo):
         self.ocx.dynamicCall("DisconnectRealData(QString)", sScrNo)
 
-    def get_deposit_info(self, nPrevNext=0):
+    def getDepositInfo(self, nPrevNext=0):
         '''
             Deposit: deposit, withdraw amount, order available amount
         '''
@@ -266,7 +266,7 @@ class Kiwoom:
 
         self.account_eventLoop.exec_()
 
-    def get_account_eval_balance(self, nPrevNext=0):
+    def getAccEvalBalance(self, nPrevNext=0):
         '''
             Account Evaluation: total purchase amount, total eval amount, total yield, ...
         '''
@@ -279,7 +279,7 @@ class Kiwoom:
         if not self.account_eventLoop.isRunning():
             self.account_eventLoop.exec_()
 
-    def not_signed_account(self, nPrevNext=0):
+    def getNotSignedAcc(self, nPrevNext=0):
         '''
             Get Open Orders
         '''
