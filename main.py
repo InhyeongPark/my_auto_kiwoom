@@ -14,12 +14,19 @@ class MyWindow(QMainWindow):
         # 005930: Samsung
         self.kiwoom.setInputValue("종목코드", "005930")
 
-        market_code = self.kiwoom.getCodeListByMarket('0')
+        market_code = self.kiwoom.getCodeListByMarket('10')
         for i, code in enumerate(market_code[:10]):
             print(i+1, self.kiwoom.getMasterCodeName(code))
 
-        username = self.kiwoom.getUserName()
-        print(username)
+        userName = self.kiwoom.username
+        deposit = self.kiwoom.deposit
+        withdraw = self.kiwoom.withdraw_amount
+        ordAmount = self.kiwoom.order_amount
+
+        print(f'UserName: {userName}')
+        print(f'Deposit: {deposit}')
+        print(f'Withdraw: {withdraw}')
+        print(f'Order Amount: {ordAmount}')
 
 
 if __name__ == "__main__":
